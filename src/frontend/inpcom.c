@@ -77,6 +77,8 @@ static struct library {
     char *realpath;
     char *habitat;
     struct card *deck;
+    time_t cached_mtime;
+    off_t cached_size;
 } libraries[N_LIBRARIES];
 
 static int num_libraries;
@@ -479,6 +481,15 @@ static struct card *insert_deck(struct card *card, struct card *new_card)
 
 static struct library *new_lib(void)
 {
+    int i;
+
+    /* Reuse an entry whose contents were freed by find_lib() after a
+     * stat()-driven cache invalidation. Without this the array would
+     * fragment toward N_LIBRARIES even though each file is loaded once. */
+    for (i = 0; i < num_libraries; i++)
+        if (!libraries[i].realpath)
+            return &libraries[i];
+
     if (num_libraries >= N_LIBRARIES) {
         fprintf(stderr, "ERROR, number of libraries > %d, N_LIBRARIES overflow\n", N_LIBRARIES);
         controlled_exit(EXIT_FAILURE);
@@ -488,15 +499,46 @@ static struct library *new_lib(void)
 }
 
 
+static void free_lib_entry(struct library *lib)
+{
+    tfree(lib->realpath);
+    tfree(lib->habitat);
+    line_free_x(lib->deck, TRUE);
+    lib->realpath = NULL;
+    lib->habitat = NULL;
+    lib->deck = NULL;
+    lib->cached_mtime = 0;
+    lib->cached_size = 0;
+}
+
+
 static void delete_libs(void)
 {
     int i;
 
-    for (i = 0; i < num_libraries; i++) {
-        tfree(libraries[i].realpath);
-        tfree(libraries[i].habitat);
-        line_free_x(libraries[i].deck, TRUE);
-    }
+    for (i = 0; i < num_libraries; i++)
+        free_lib_entry(&libraries[i]);
+    num_libraries = 0;
+}
+
+
+/* Compare the file's current size and modification time against the
+ * cached entry. Returns TRUE when the cached deck is still authoritative.
+ * Returns FALSE when the file has been edited under us (mtime or size
+ * differs) or when stat() fails. Used by find_lib() to invalidate stale
+ * entries so library edits picked up between reloads still take effect.
+ */
+static bool cached_lib_file_metadata_matches_current_file(const struct library *lib)
+{
+    struct stat current_file_stat;
+
+    if (stat(lib->realpath, &current_file_stat) != 0)
+        return FALSE;
+    if (current_file_stat.st_mtime != lib->cached_mtime)
+        return FALSE;
+    if (current_file_stat.st_size != lib->cached_size)
+        return FALSE;
+    return TRUE;
 }
 
 
@@ -504,9 +546,18 @@ static struct library *find_lib(char *name)
 {
     int i;
 
-    for (i = 0; i < num_libraries; i++)
-        if (cieq(libraries[i].realpath, name))
+    for (i = 0; i < num_libraries; i++) {
+        if (!libraries[i].realpath)
+            continue;
+        if (!cieq(libraries[i].realpath, name))
+            continue;
+        if (cached_lib_file_metadata_matches_current_file(&libraries[i]))
             return &libraries[i];
+        /* The library file on disk has changed since we parsed it; evict
+         * the cached entry so read_a_lib() re-parses below. */
+        free_lib_entry(&libraries[i]);
+        return NULL;
+    }
 
     return NULL;
 }
@@ -580,6 +631,7 @@ static struct library *read_a_lib(const char *y, const char *dir_name)
     if (!lib) {
 
         FILE *newfp = fopen(y_resolved, "r");
+        struct stat lib_file_stat;
 
         if (!newfp) {
             fprintf(cp_err, "Error: Could not open library file %s\n", y);
@@ -593,6 +645,10 @@ static struct library *read_a_lib(const char *y, const char *dir_name)
 
         lib->realpath = copy(yy);
         lib->habitat = ngdirname(yy);
+        if (stat(yy, &lib_file_stat) == 0) {
+            lib->cached_mtime = lib_file_stat.st_mtime;
+            lib->cached_size = lib_file_stat.st_size;
+        }
 
         lib->deck =
             inp_read(newfp, 1 /*dummy*/, lib->habitat, lib->realpath, FALSE, FALSE).cc;
@@ -1051,7 +1107,10 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
     struct card *cc;
     struct inp_read_t rv;
 
-    num_libraries = 0;
+    /* Don't wipe num_libraries here; find_lib() validates each entry
+     * against the file's current size + mtime on every lookup, so
+     * unchanged libraries (the common case across repeated reloads)
+     * stay cached and skip a full multi-megabyte re-parse. */
     /* set the members of the compatibility structure */
     set_compat_mode();
 
@@ -1090,8 +1149,6 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
         struct card *working = cc->nextcard;
 
         print_compat_mode();
-
-        delete_libs();
 
 #ifndef EXT_ASC
         utf8_syntax_check(working);
