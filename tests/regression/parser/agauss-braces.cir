@@ -1,0 +1,40 @@
+* 'agauss-braces' check .param with agauss and a braced term
+
+.param partly_braced = {1} + agauss(0,0,1)
+.param drawn_once = {0} + agauss(0,1,1)
+
+v_partly_braced  partly_braced 0  {partly_braced}
+v_drawn_once_1   drawn_once_1  0  {drawn_once}
+v_drawn_once_2   drawn_once_2  0  {drawn_once}
+
+.control
+op
+
+let n_pass = 0
+
+echo "Note: partly_braced = $&v(partly_braced)"
+echo "Note: drawn_once = $&v(drawn_once_1) and $&v(drawn_once_2)"
+
+if abs(v(partly_braced) - 1) <= 1e-9
+    let n_pass = n_pass + 1
+else
+    echo "ERROR: partly_braced failed"
+end
+
+if abs(v(drawn_once_1) - v(drawn_once_2)) <= 1e-9
+    let n_pass = n_pass + 1
+else
+    echo "ERROR: drawn_once failed"
+end
+
+if n_pass = 2
+    echo "INFO: ok"
+    quit 0
+end
+
+echo ERROR: $&n_pass of 2 tests passed
+quit 1
+
+.endc
+
+.end

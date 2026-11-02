@@ -8551,8 +8551,13 @@ static void inp_fix_agauss_in_param(struct card *deck, char *fcn)
                     keep = nghash_find(toplevel, name) != NULL;
                     tfree(name);
                 }
-                if (keep)
+                if (keep) {
+                    /* numparam treats a {...} group as the entire value
+                       and rejects anything after it; the braces are
+                       optional, so remove them */
+                    (void) inp_strip_braces(equal_ptr + 1);
                     continue;
+                }
             }
 
             if (temper < equal_ptr) {
