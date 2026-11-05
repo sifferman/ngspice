@@ -3709,6 +3709,70 @@ static void inp_change_quotes(char *s)
 }
 
 
+/* The device that a .model card selects by name, such as a code model, or NULL */
+static IFdevice *find_model_device(const char *line)
+{
+    const char *type_begin = skip_token(skip_token(line));
+    const char *type_end = type_begin;
+    while (*type_end && !isspace_c(*type_end) && *type_end != '(')
+        type_end++;
+
+    char *type_name = copy_substring(type_begin, type_end);
+    const int type = INPtypelook(type_name);
+    tfree(type_name);
+    return type < 0 ? NULL : ft_sim->devices[type];
+}
+
+
+static bool takes_string(const IFdevice *device, const char *parameter_begin, const char *parameter_end)
+{
+    if (!device)
+        return FALSE;
+
+    const size_t length = (size_t) (parameter_end - parameter_begin);
+    for (int i = 0; i < *device->numModelParms; i++) {
+        const IFparm *parameter = &device->modelParms[i];
+        if (strlen(parameter->keyword) == length && strncmp(parameter->keyword, parameter_begin, length) == 0)
+            return parameter->dataType & IF_STRING;
+    }
+    return FALSE;
+}
+
+
+/* With ngbehavior=hs, a double-quoted .model value is an expression, like a
+   single-quoted one, unless its parameter takes a string */
+static void inp_change_double_quotes(char *line)
+{
+#ifdef CIDER
+    if (is_cider_model(line))
+        return;
+#endif
+    const IFdevice *device = find_model_device(line);
+    char *assignment;
+
+    while ((assignment = find_assignment(line)) != NULL) {
+        const char *parameter_end = skip_back_ws(assignment, line);
+        const char *parameter_begin = parameter_end;
+        while (parameter_begin > line && !isspace_c(parameter_begin[-1]) && parameter_begin[-1] != '(')
+            parameter_begin--;
+
+        char *value = skip_ws(assignment + 1);
+        line = assignment + 1;
+        if (*value != '"')
+            continue;
+
+        char *closing_quote = strchr(value + 1, '"');
+        if (!closing_quote)
+            return;
+        if (!takes_string(device, parameter_begin, parameter_end)) {
+            *value = '{';
+            *closing_quote = '}';
+        }
+        line = closing_quote + 1;
+    }
+}
+
+
 static void add_name(struct names *p, char *name)
 {
     if (p->num_names >= N_SUBCKT_W_PARAMS) {
@@ -3907,6 +3971,8 @@ static void inp_fix_for_numparam(
             continue;
 
         inp_change_quotes(c->line);
+        if (newcompat.hs && ciprefix(".model", c->line))
+            inp_change_double_quotes(c->line);
 
         if ((!newcompat.hs && !newcompat.s3) || c->compmod > 0)
             if (ciprefix(".subckt", c->line) || ciprefix("x", c->line)) {
