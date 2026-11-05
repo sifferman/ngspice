@@ -1,0 +1,25 @@
+Warning: ignoring "volt" after the number in "1volt"
+    line no. 18 from file text-after-number.cir
+Warning: ignoring "volt" after the number in "-1volt"
+    line no. 19 from file text-after-number.cir
+Warning: ignoring "ohm" after the number in "3kohm"
+    line no. 2 from file text-after-number.cir
+Warning: ignoring "volt" after the number in "1volt"
+    line no. 8 from file text-after-number.cir
+Warning: ignoring "ohm" after the number in "1kohm"
+    line no. 9 from file text-after-number.cir
+Warning: ignoring "ohm" after the number in "2kohm"
+    line no. 10 from file text-after-number.cir
+Warning: ignoring "farad" after the number in "2pfarad"
+    line no. 12 from file text-after-number.cir
+Warning: ignoring "farad" after the number in "3pfarad"
+    line no. 13 from file text-after-number.cir
+Warning: ignoring "henry" after the number in "2nhenry"
+    line no. 14 from file text-after-number.cir
+Warning: ignoring "henry" after the number in "3nhenry"
+    line no. 15 from file text-after-number.cir
+Warning: ignoring "ohm" after the number in "1kohm"
+    line no. 3 from file text-after-number.cir
+Warning: ignoring "ohm" after the number in "4kohm"
+    line no. 5 from file text-after-number.cir
+Warning: ignoring "hz" after the number in "1khz"

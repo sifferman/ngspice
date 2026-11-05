@@ -58,6 +58,7 @@ typedef struct {                /* the input scanner data structure */
     int hs_compatibility;       /* allow extra keywords */
     int linecount;              /* number of lines in deck */
     char* cardline;             /* line of card treated currently */
+    char* linesource;           /* file of card treated currently */
 } dico_t;
 
 

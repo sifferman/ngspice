@@ -1,0 +1,28 @@
+* text-after-number.cir: warn once about text after a number
+.param resistance=3kohm
+.model diode_model d rs=1kohm cjo=2pf tt=5ns
+.subckt cell node
+.model cell_model d rs=4kohm
+d_cell node 0 cell_model
+.ends
+v_source source 0 1volt
+r_positional source 0 1kohm
+r_named source 0 r=2kohm
+r_braced source 0 {resistance}
+c_positional source 0 2pfarad
+c_named source 0 c=3pfarad
+l_positional source first 2nhenry
+l_named source second l=3nhenry
+r_first first 0 1megv
+r_second second 0 1k
+b_plain plain 0 v=1volt
+b_negative negative 0 v=2*-1volt
+d_diode source 0 diode_model
+x_first source cell
+x_second source cell
+.control
+op
+print v(plain) v(negative)
+ac dec 1 1khz 1khz
+.endc
+.end

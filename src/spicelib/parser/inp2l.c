@@ -73,7 +73,7 @@ void INP2L(CKTcircuit *ckt, INPtables * tab, struct card *current)
     if (newcompat.lt)
         val = INPevaluateRKM_L(&line, &error1, 1);	/* [<val>] */
     else
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
     saveline = line;
     
     INPgetNetTok(&line, &model, 1);
@@ -115,7 +115,7 @@ void INP2L(CKTcircuit *ckt, INPtables * tab, struct card *current)
       }
       IFC(newInstance, (ckt, tab->defLmod, &fast, name));
       if (error1 == 1) {		/* was a l=val construction */
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
 #ifdef TRACE
         printf ("In INP2L, L=val construction: val=%g\n", val);
 #endif

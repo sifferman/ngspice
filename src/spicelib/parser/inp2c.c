@@ -74,7 +74,7 @@ void INP2C(CKTcircuit *ckt, INPtables * tab, struct card *current)
     if (newcompat.lt)
         val = INPevaluateRKM_C(&line, &error1, 1);	/* [<val>] */
     else
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
     
     saveline = line;
     
@@ -117,7 +117,7 @@ void INP2C(CKTcircuit *ckt, INPtables * tab, struct card *current)
       }
       IFC(newInstance, (ckt, tab->defCmod, &fast, name));
       if (error1 == 1) {		/* was a c=val construction */
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
 #ifdef TRACE
         printf ("In INP2C, C=val construction: val=%g\n", val);
 #endif

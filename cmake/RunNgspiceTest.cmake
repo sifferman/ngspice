@@ -72,6 +72,17 @@ function(_normalise raw out_var)
     set(${out_var} "${_keep}" PARENT_SCOPE)
 endfunction()
 
+# a test with a .err file also compares standard error, without directories
+set(_err_ref "${_dir}/${_name}.err")
+if(EXISTS "${_err_ref}")
+    file(READ "${_err_ref}" _err_want)
+    string(REPLACE "\r\n" "\n" _err "${_err}")
+    string(REGEX REPLACE "from file [^\n]*[/\\]" "from file " _err "${_err}")
+    if(NOT _err STREQUAL _err_want)
+        message(FATAL_ERROR "standard error differs from ${_err_ref}:\n${_err}")
+    endif()
+endif()
+
 _normalise("${_out}"     _got)
 _normalise("${_refdata}" _want)
 

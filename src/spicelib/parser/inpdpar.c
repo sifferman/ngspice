@@ -53,7 +53,7 @@ INPdevParse(char **line, CKTcircuit *ckt, int dev, GENinstance *fast,
 
     /* check for leading value */
     *waslead = 0;
-    *leading = INPevaluate(line, &error, 1);
+    *leading = INPevaluateNumber(line, &error);
 
     if (error == 0)             /* found a good leading number */
         *waslead = 1;

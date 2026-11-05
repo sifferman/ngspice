@@ -27,11 +27,11 @@ INPgetValue(CKTcircuit *ckt, char **line, int type, INPtables *tab)
     /* make sure we get rid of extra bits in type */
     type &= IF_VARTYPES;
     if (type == IF_INTEGER) {
-        tmp = INPevaluate(line, &error, 1);
+        tmp = INPevaluateNumber(line, &error);
         temp.iValue = (int) floor(0.5 + tmp);
         /* printf(" returning integer value %d\n",temp.iValue); */
     } else if (type == IF_REAL) {
-        temp.rValue = INPevaluate(line, &error, 1);
+        temp.rValue = INPevaluateNumber(line, &error);
         /* printf(" returning real value %e\n",temp.rValue); */
     } else if (type == IF_REALVEC) {
         /* read until error occurs. If error, and first
@@ -39,7 +39,7 @@ INPgetValue(CKTcircuit *ckt, char **line, int type, INPtables *tab)
            If first token is already in error, return NULL.*/
         temp.v.numValue = 0;
         list = TMALLOC(double, 1);
-        tmp = INPevaluate(line, &error, 1);
+        tmp = INPevaluateNumber(line, &error);
         if (error) {
             if(ft_ngdebug)
                 fprintf(stderr, "\nError: Could not read parameter in front of\n    %s\n", *line);
@@ -51,7 +51,7 @@ INPgetValue(CKTcircuit *ckt, char **line, int type, INPtables *tab)
             temp.v.numValue++;
             list = TREALLOC(double, list, temp.v.numValue);
             list[temp.v.numValue - 1] = tmp;
-            tmp = INPevaluate(line, &error, 1);
+            tmp = INPevaluateNumber(line, &error);
         }
         if (error && ft_ngdebug && !eq(*line, "") && !prefix(")", *line) &&
             temp.v.numValue > 1) {
@@ -65,7 +65,7 @@ INPgetValue(CKTcircuit *ckt, char **line, int type, INPtables *tab)
            If first token is already in error, return NULL.*/
         temp.v.numValue = 0;
         ilist = TMALLOC(int, 1);
-        tmp = INPevaluate(line, &error, 1);
+        tmp = INPevaluateNumber(line, &error);
         if (error) {
             tfree(ilist);
             return NULL;
@@ -75,7 +75,7 @@ INPgetValue(CKTcircuit *ckt, char **line, int type, INPtables *tab)
             temp.v.numValue++;
             ilist = TREALLOC(int, ilist, temp.v.numValue);
             ilist[temp.v.numValue - 1] = (int) floor(0.5 + tmp);
-            tmp = INPevaluate(line, &error, 1);
+            tmp = INPevaluateNumber(line, &error);
         }
         if (error && ft_ngdebug && !eq(*line, "") && !prefix(")", *line) &&
             temp.v.numValue > 1) {

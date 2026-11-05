@@ -74,7 +74,7 @@ find_instance_parameter(const char *name, IFdevice *device)
  * code moved from INPgetMod
  */
 static int
-create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
+create_model_from_card(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
 {
     char    *err = NULL, *line, *parm, *endptr;
     int     error;
@@ -195,6 +195,23 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
 
     modtmp->INPmodLine->error = err;
     return 0;
+}
+
+
+/* models are created when the first instance uses them, so point the
+ * line number in messages at the .model card, not at the instance */
+static int
+create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
+{
+    const int instance_line = Current_parse_line;
+    char *const instance_source = Sourcefile;
+
+    Current_parse_line = modtmp->INPmodLine->linenum_orig;
+    Sourcefile = modtmp->INPmodLine->linesource;
+    const int error = create_model_from_card(ckt, modtmp, tab);
+    Current_parse_line = instance_line;
+    Sourcefile = instance_source;
+    return error;
 }
 
 

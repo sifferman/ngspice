@@ -275,6 +275,7 @@ initdico(dico_t *dico)
     else
         dico->hs_compatibility = 0;
     dico->cardline = NULL;
+    dico->linesource = NULL;
 }
 
 
@@ -654,14 +655,18 @@ fetchnumber(dico_t *dico, const char **pi, bool *perror)
     }
 
     u *= parseunit(s + n);
+    const int digits = n;
 
     /* swallow unit
-     *   FIXME `100MegBaz42' should emit an error message
      *   FIXME should we allow whitespace ?   `100 MEG' ?
      */
 
     while (s[n] && alfa(s[n]))
         n++;
+
+    char *word = copy_substring(s, s + n);
+    INPwarnTextAfterNumber(word, word + digits, dico->oldline, dico->linesource);
+    tfree(word);
 
     *pi += n;
 
