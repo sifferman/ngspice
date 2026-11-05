@@ -8,6 +8,51 @@ Author: 1985 Thomas L. Quarles
 #include "ngspice/inpdefs.h"
 #include "inpxx.h"
 
+/* MOS levels of commercial simulators that select a Verilog-A model loaded
+   with pre_osdi, and the values of its parameter "type" for nmos and pmos */
+static const struct osdi_mos_model {
+    int level;
+    char *module_name;
+    char *nmos_type;
+    char *pmos_type;
+} osdi_mos_models[] = {
+    { 72, "bsimcmg_va", "1", "-1" },    /* BSIM-CMG 111 and later */
+    { 72, "bsimcmg", "1", "0" },        /* BSIM-CMG 110 and earlier */
+};
+
+
+/* The first table row of a MOS level, or NULL. *type is the device of the
+   first row of that level whose module is loaded, or -1 */
+static const struct osdi_mos_model *
+find_osdi_mos_model(int level, int *type)
+{
+    const struct osdi_mos_model *first_row = NULL;
+    *type = -1;
+    for (size_t i = 0; i < NUMELEMS(osdi_mos_models) && *type < 0; i++)
+        if (osdi_mos_models[i].level == level) {
+            if (!first_row)
+                first_row = &osdi_mos_models[i];
+            *type = INPtypelook(osdi_mos_models[i].module_name);
+        }
+    return first_row;
+}
+
+
+/* The value of parameter "type" that the word nmos or pmos on a card of
+   OSDI device module_name stands for, or NULL for any other card */
+char *
+INPosdiMosTypeValue(const char *module_name, const char *type_name)
+{
+    for (size_t i = 0; i < NUMELEMS(osdi_mos_models); i++)
+        if (strcasecmp(osdi_mos_models[i].module_name, module_name) == 0) {
+            if (strcmp(type_name, "nmos") == 0)
+                return osdi_mos_models[i].nmos_type;
+            if (strcmp(type_name, "pmos") == 0)
+                return osdi_mos_models[i].pmos_type;
+        }
+    return NULL;
+}
+
 /*--------------------------------------------------------------
  * This fcn takes the model card & examines it.  Depending upon
  * model type, it parses the model line, and then calls
@@ -374,9 +419,16 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 			    }
 			    break;
 			default:		/* placeholder; use level xxx for the next model */
-			    err = INPmkTemp
-				("Only MOS device levels 1-6,8-10,14,49,54-58,60,68,73 are supported in this binary\n");
+			{
+			    const struct osdi_mos_model *osdi_model = find_osdi_mos_model(lev, &type);
+			    if (!osdi_model)
+				err = INPmkTemp
+				    ("Only MOS device levels 1-6,8-10,14,49,54-58,60,68,72,73 are supported in this binary\n");
+			    else if (type < 0)
+				err = tprintf("MOS level %d needs Verilog-A module %s loaded with pre_osdi\n",
+					      lev, osdi_model->module_name);
 			    break;
+			}
 			}
 			INPmakeMod(modname, type, image);
     }

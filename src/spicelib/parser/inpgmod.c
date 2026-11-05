@@ -118,8 +118,19 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
 #ifdef OSDI
     /* osdi models don't accept their device type as an argument */
     bool is_osdi = false;
+    const char *mos_type_name = NULL;
     if (device->registry_entry){ 
-        INPgetNetTok(&line, &parm, 1); /* throw away osdi */
+        INPgetNetTok(&line, &parm, 1); /* osdi model name, or nmos/pmos of a MOS level card */
+        char *type_value = INPosdiMosTypeValue(device->name, parm);
+        if (type_value) {
+            mos_type_name = strcmp(parm, "nmos") == 0 ? "nmos" : "pmos";
+            IFparm *type_parameter = find_model_parameter("type", device);
+            if (type_parameter)
+                ft_sim->setModelParm(ckt, modtmp->INPmodfast, type_parameter->id,
+                                     INPgetValue(ckt, &type_value, type_parameter->dataType, tab), NULL);
+            else
+                err = INPerrCat(err, tprintf("%s has no parameter type, %s ignored", device->name, parm));
+        }
         tfree(parm);
         is_osdi = true;
     }
@@ -131,6 +142,18 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
             FREE(parm);
             continue;
         }
+
+#ifdef OSDI
+        /* BSIM-CMG devtype is 1 for nmos and 0 for pmos; nmos or pmos decides */
+        if (mos_type_name && strcmp(parm, "devtype") == 0) {
+            const double devtype = INPgetValue(ckt, &line, IF_REAL, tab)->rValue;
+            const double devtype_of_mos_type = strcmp(mos_type_name, "nmos") == 0 ? 1 : 0;
+            if (devtype != devtype_of_mos_type)
+                err = INPerrCat(err, tprintf("devtype=%g contradicts %s - ignored", devtype, mos_type_name));
+            FREE(parm);
+            continue;
+        }
+#endif
 
         IFparm *p = find_model_parameter(parm, device);
 
