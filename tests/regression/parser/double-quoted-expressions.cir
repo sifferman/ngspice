@@ -1,0 +1,8 @@
+*ng_script
+* double-quoted-expressions.cir: with ngbehavior=hs a double-quoted .model value is an expression
+.control
+set ngbehavior=hs
+source double-quoted-expressions.sp
+op
+print v(double_quoted)
+.endc
