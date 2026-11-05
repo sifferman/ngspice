@@ -7,7 +7,79 @@ Author: 1985 Thomas L. Quarles
 #include <stdio.h>
 #include <ctype.h>
 #include "ngspice/inpdefs.h"
+#include "ngspice/stringskip.h"
+#include "ngspice/wordlist.h"
 #include "inpxx.h"
+
+
+/* The length of the scale factor at the start of s that INPevaluate reads */
+static int
+scale_factor_length(const char *s)
+{
+    if (ciprefix("meg", s) || ciprefix("mil", s))
+        return 3;
+    return (*s && strchr("tgkunpfamTGKUNPFAM", *s)) ? 1 : 0;
+}
+
+
+/* warnings printed since the netlist was read, to print each one once */
+static wordlist *printed_warnings = NULL;
+
+
+void
+INPforgetPrintedWarnings(void)
+{
+    wl_free(printed_warnings);
+    printed_warnings = NULL;
+}
+
+
+/* Warn about invalid text after the number in word.  Valid text is a scale
+   factor, a unit letter (v, s, f, or h), or a scale factor and then a unit
+   letter: 5ns and 2pf are valid, but 1kohm and 4k7 are not.  Each warning
+   prints only the first time it occurs in the netlist. */
+void
+INPwarnTextAfterNumber(const char *word, const char *after_digits, int line, const char *file)
+{
+    const char *unit = after_digits + scale_factor_length(after_digits);
+    const char *unread = skip_ws(unit + (*unit && strchr("vsfhVSFH", *unit) ? 1 : 0));
+    const bool ends_osdi_vector = strcmp(unread, "]") == 0;
+
+    if (!*unread || ends_osdi_vector)
+        return;
+
+    char *warning = file ?
+        tprintf("Warning: ignoring \"%s\" after the number in \"%s\"\n"
+                "    line no. %d from file %s\n", skip_ws(unit), word, line, file) :
+        tprintf("Warning: ignoring \"%s\" after the number in \"%s\"\n",
+                skip_ws(unit), word);
+    if (wl_find(warning, printed_warnings)) {
+        tfree(warning);
+        return;
+    }
+    fputs(warning, stderr);
+    printed_warnings = wl_cons(warning, printed_warnings);
+}
+
+
+/* INPevaluate the next number and warn about text after it */
+double
+INPevaluateNumber(char **line, int *error)
+{
+    char *line_before = *line;
+    char *token;
+
+    INPgetUTok(line, &token, 0);
+
+    char *rest = skip_ws(token);
+    const double value = INPevaluate(&rest, error, 0);
+    if (*error)
+        *line = line_before;
+    else
+        INPwarnTextAfterNumber(token, rest, Current_parse_line, Sourcefile);
+    tfree(token);
+    return value;
+}
 
 
 double

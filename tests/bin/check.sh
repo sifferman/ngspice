@@ -24,26 +24,41 @@ testdir=`dirname $TEST`
 
 HOST_TYPE=`uname -srvm`
 
+# a test with a .err file also compares standard error, without directories
+run_spice() {
+    if [ -f $testdir/$testname.err ] ; then
+        $SPICE --batch $testdir/$testname.cir >$testname.test 2>$testname.err_test
+    else
+        $SPICE --batch $testdir/$testname.cir >$testname.test
+    fi
+}
+
+check_stderr() {
+    [ -f $testdir/$testname.err ] || return 0
+    sed -e 's#from file .*[/\\]#from file #' $testname.err_test |
+    diff -u $testdir/$testname.err - && rm $testname.err_test
+}
+
 case $HOST_TYPE in
     Linux*|Darwin*|CYGWIN*|MINGW*|MSYS*)
-      $SPICE --batch $testdir/$testname.cir >$testname.test
+      run_spice
       # contrary to the c standard windows may print floating point values
       #   with three instead of two exponential digits
       sed -e 's/\([.0-9][eE][+-]\?\)0\([0-9]\{2\}\)/\1\2/g' \
           <$testname.test | \
       egrep -v "$FILTER" > $testname.test_tmp
       egrep -v "$FILTER" $testdir/$testname.out > $testname.out_tmp
-      if diff -B -w -u $testname.out_tmp $testname.test_tmp; then
+      if diff -B -w -u $testname.out_tmp $testname.test_tmp && check_stderr; then
           rm $testname.test $testname.test_tmp $testname.out_tmp
           exit 0
       fi
       rm -f $testname.test_tmp $testname.out_tmp
       ;;
     FreeBSD*|SunOS*|OpenBSD*)
-      $SPICE --batch $testdir/$testname.cir >$testname.test
+      run_spice
       sed -e '/^$/d' $testname.test | egrep -v "$FILTER" > $testname.test_tmp
       sed -e '/^$/d' $testdir/$testname.out | egrep -v "$FILTER" > $testname.out_tmp
-      if diff -b -w $testname.out_tmp $testname.test_tmp; then
+      if diff -b -w $testname.out_tmp $testname.test_tmp && check_stderr; then
           rm $testname.test $testname.test_tmp $testname.out_tmp
           exit 0
       fi

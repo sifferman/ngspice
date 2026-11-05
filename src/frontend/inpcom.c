@@ -151,7 +151,7 @@ static bool inp_temper_compat(struct card *card);
 static void inp_meas_current(struct card *card);
 static void inp_meas_control(struct card *card);
 static void inp_dot_if(struct card *deck);
-static char *inp_modify_exp(char *expression);
+static char *inp_modify_exp(char *expression, const struct card *card);
 static struct func_temper *inp_new_func(char *funcname, char *funcbody,
         struct card *card, int *sub_count, int subckt_depth);
 static void inp_delete_funcs(struct func_temper *funcs);
@@ -1052,6 +1052,7 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
     struct inp_read_t rv;
 
     num_libraries = 0;
+    INPforgetPrintedWarnings();
     /* set the members of the compatibility structure */
     set_compat_mode();
 
@@ -7448,7 +7449,7 @@ static void inp_bsource_compat(struct card *card)
                 controlled_exit(EXIT_FAILURE);
             }
             /* prepare to skip parsing in numparam with expressions */
-            new_str = inp_modify_exp(equal_ptr + 1);
+            new_str = inp_modify_exp(equal_ptr + 1, card);
             final_str = tprintf("%.*s %s", (int) (equal_ptr + 1 - curr_line),
                     curr_line, new_str);
 
@@ -7523,7 +7524,7 @@ static bool inp_temper_compat(struct card *card)
             end_str = end_tstr = beg_tstr;
             exp_str = gettok_char(&end_tstr, '}', TRUE, TRUE);
             /* modify the expression string */
-            modified_exp = inp_modify_exp(exp_str);
+            modified_exp = inp_modify_exp(exp_str, card);
             tfree(exp_str);
             /* add the intermediate string between previous and next
              * expression to the new line */
@@ -7557,7 +7558,22 @@ static bool inp_temper_compat(struct card *card)
  * and other keywords like TEMPER. --> Only parameter replacement in numparam
  */
 
-static char *inp_modify_exp(/* NOT CONST */ char *expr)
+/* skip the letters after the digits of a number, and warn on an invalid
+   scale factor or unit */
+static char *skip_unit(const char *number, char *after_digits, const struct card *card)
+{
+    char *end = after_digits;
+    while (isalpha_c(*end))
+        end++;
+
+    char *word = copy_substring(number, end);
+    INPwarnTextAfterNumber(word, word + (after_digits - number), card->linenum_orig, card->linesource);
+    tfree(word);
+    return end;
+}
+
+
+static char *inp_modify_exp(/* NOT CONST */ char *expr, const struct card *card)
 {
     char *s;
     wordlist *wl = NULL, *wlist = NULL;
@@ -7591,6 +7607,7 @@ static char *inp_modify_exp(/* NOT CONST */ char *expr)
             else if (c == '-' && c_arith_prev && c_prev != ')') {
                 /* enter whole number string if '-' is a sign */
                 int error1;
+                char *number = s;
                 /* allow 100p, 5MEG etc. */
                 double dvalue = INPevaluate(&s, &error1, 0);
                 if (error1) {
@@ -7599,9 +7616,7 @@ static char *inp_modify_exp(/* NOT CONST */ char *expr)
                 }
                 else {
                     wl->wl_word = tprintf("%18.10e", dvalue);
-                    /* skip the `unit', FIXME INPevaluate() should do this */
-                    while (isalpha_c(*s))
-                        s++;
+                    s = skip_unit(number, s, card);
                 }
             }
             else {
@@ -7673,13 +7688,11 @@ static char *inp_modify_exp(/* NOT CONST */ char *expr)
         }
         else if (isdigit_c(c) || (c == '.')) { /* allow .5 format too */
             int error1;
+            char *number = s;
             /* allow 100p, 5MEG etc. */
             double dvalue = INPevaluate(&s, &error1, 0);
             wl->wl_word = tprintf("%18.10e", dvalue);
-            /* skip the `unit', FIXME INPevaluate() should do this */
-            while (isalpha_c(*s)) {
-                s++;
-            }
+            s = skip_unit(number, s, card);
         }
         else { /* strange char */
             printf("Preparing expression for numparam\nWhat is this?\n%s\n",

@@ -82,7 +82,7 @@ void INP2R(CKTcircuit *ckt, INPtables * tab, struct card *current)
     if (newcompat.lt)
         val = INPevaluateRKM_R(&line, &error1, 1);	/* [<val>] */
     else
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
 
     /* either not a number -> model, or
      * follows a number, so must be a model name
@@ -200,7 +200,7 @@ void INP2R(CKTcircuit *ckt, INPtables * tab, struct card *current)
       }
       IFC(newInstance, (ckt, tab->defRmod, &fast, name));
       if (error1 == 1) {		/* was a r=val construction */
-        val = INPevaluate(&line, &error1, 1);	/* [<val>] */
+        val = INPevaluateNumber(&line, &error1);	/* [<val>] */
 #ifdef TRACE
         printf ("In INP2R, R=val construction: val=%g\n", val);
 #endif

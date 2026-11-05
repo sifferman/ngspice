@@ -673,6 +673,7 @@ nupa_eval(struct card *card)
     dicoS->srcline = linenum;
     dicoS->oldline = orig_linenum;
     dicoS->cardline = s;
+    dicoS->linesource = card->linesource;
 
     c = dicoS->dyncategory[linenum];
 
