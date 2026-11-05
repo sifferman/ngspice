@@ -35,6 +35,10 @@ void INP2W(CKTcircuit *ckt, INPtables *tab, struct card *current);
 void INP2Y(CKTcircuit *ckt, INPtables *tab, struct card *current);
 void INP2Z(CKTcircuit *ckt, INPtables *tab, struct card *current);
 
+/* inpdomod.c */
+
+char *INPosdiMosTypeValue(const char *module_name, const char *type_name);
+
 
 /* ptfuncs.c */
 
