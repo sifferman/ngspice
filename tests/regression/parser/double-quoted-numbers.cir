@@ -1,0 +1,9 @@
+* double-quoted-numbers.cir: a double-quoted model value is read in full
+.model diode_double_quoted d is="1e-14"
+i_double_quoted 0 double_quoted 1m
+d_double_quoted double_quoted 0 diode_double_quoted
+.control
+op
+print v(double_quoted)
+.endc
+.end

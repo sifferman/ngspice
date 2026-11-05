@@ -324,9 +324,6 @@ INPgetUTok(char **line, char **token, int gobble)
             signstate = 3;
     }
 
-    if (separator && *point == separator)
-        point--;
-
     if (point == *line && *point)       /* Weird items, 1 char */
         point++;
 
