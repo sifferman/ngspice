@@ -37,7 +37,7 @@ void INP2Z(CKTcircuit *ckt, INPtables *tab, struct card *current);
 
 /* inpdomod.c */
 
-char *INPosdiMosTypeValue(const char *module_name, const char *type_name);
+bool INPosdiLevelCard(const char *module_name, const char *type_name, char **parameter, char **value);
 
 
 /* ptfuncs.c */

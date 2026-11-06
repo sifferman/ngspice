@@ -115,21 +115,24 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
     INPgetNetTok(&line, &parm, 1);        /* throw away 'modname' */
     tfree(parm);
 
+    bool is_level_card = false;
 #ifdef OSDI
     /* osdi models don't accept their device type as an argument */
     bool is_osdi = false;
     const char *mos_type_name = NULL;
     if (device->registry_entry){ 
-        INPgetNetTok(&line, &parm, 1); /* osdi model name, or nmos/pmos of a MOS level card */
-        char *type_value = INPosdiMosTypeValue(device->name, parm);
-        if (type_value) {
+        INPgetNetTok(&line, &parm, 1); /* osdi model name, or the model type of a level card */
+        char *polarity_name = NULL, *polarity_value = NULL;
+        is_level_card = INPosdiLevelCard(device->name, parm, &polarity_name, &polarity_value);
+        if (is_level_card && (strcmp(parm, "nmos") == 0 || strcmp(parm, "pmos") == 0))
             mos_type_name = strcmp(parm, "nmos") == 0 ? "nmos" : "pmos";
-            IFparm *type_parameter = find_model_parameter("type", device);
-            if (type_parameter)
-                ft_sim->setModelParm(ckt, modtmp->INPmodfast, type_parameter->id,
-                                     INPgetValue(ckt, &type_value, type_parameter->dataType, tab), NULL);
+        if (polarity_name) {
+            IFparm *polarity_parameter = find_model_parameter(polarity_name, device);
+            if (polarity_parameter)
+                ft_sim->setModelParm(ckt, modtmp->INPmodfast, polarity_parameter->id,
+                                     INPgetValue(ckt, &polarity_value, polarity_parameter->dataType, tab), NULL);
             else
-                err = INPerrCat(err, tprintf("%s has no parameter type, %s ignored", device->name, parm));
+                err = INPerrCat(err, tprintf("%s has no parameter %s, %s ignored", device->name, polarity_name, parm));
         }
         tfree(parm);
         is_osdi = true;
@@ -155,7 +158,10 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
         }
 #endif
 
-        IFparm *p = find_model_parameter(parm, device);
+        /* the level of a level card selected the module, so the level
+           parameter of the module keeps its default */
+        const bool is_card_level = is_level_card && strcmp(parm, "level") == 0;
+        IFparm *p = is_card_level ? NULL : find_model_parameter(parm, device);
 
         if (p) {
 #ifdef OSDI

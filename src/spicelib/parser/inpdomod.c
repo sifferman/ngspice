@@ -8,49 +8,85 @@ Author: 1985 Thomas L. Quarles
 #include "ngspice/inpdefs.h"
 #include "inpxx.h"
 
-/* MOS levels of commercial simulators that select a Verilog-A model loaded
-   with pre_osdi, and the values of its parameter "type" for nmos and pmos */
-static const struct osdi_mos_model {
+/* Levels that select a Verilog-A model loaded with pre_osdi, and the value of
+   its polarity parameter for each model type, such as nmos and pmos */
+static const struct osdi_level_model {
+    char *model_types[2];
     int level;
     char *module_name;
-    char *nmos_type;
-    char *pmos_type;
-} osdi_mos_models[] = {
-    { 72, "bsimcmg_va", "1", "-1" },    /* BSIM-CMG 111 and later */
-    { 72, "bsimcmg", "1", "0" },        /* BSIM-CMG 110 and earlier */
+    char *polarity_parameter;
+    char *polarity_values[2];
+} osdi_level_models[] = {
+    { { "npn", "pnp" }, 6, "bjt505_va", "type", { "1", "-1" } },     /* Mextram 505 */
+    { { "npn", "pnp" }, 6, "bjt504va", "type", { "1", "-1" } },      /* Mextram 504 */
+    { { "npn", "pnp" }, 8, "hicumL2va", "type", { "1", "-1" } },
+    { { "npn", "pnp" }, 13, "hicumL0va", "type", { "1", "-1" } },
+    { { "d", NULL }, 7, "diode_cmc", NULL, { NULL, NULL } },
+    { { "r", NULL }, 2, "r2_cmc", NULL, { NULL, NULL } },
+    { { "nmos", "pmos" }, 69, "PSP104VA", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 69, "PSP103VA", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 70, "bsimsoi_va", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 72, "bsimcmg_va", "type", { "1", "-1" } },  /* BSIM-CMG 111 and later */
+    { { "nmos", "pmos" }, 72, "bsimcmg", "type", { "1", "0" } },      /* BSIM-CMG 110 and earlier */
+    { { "nmos", "pmos" }, 76, "l_utsoi", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 77, "bsimbulk", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 78, "bsimimg", "type", { "1", "-1" } },
+    { { "nmos", "pmos" }, 79, "ekv3_rf", "sign", { "1", "-1" } },
+    { { "nmos", "pmos" }, 80, "hisimsoi_va", "type", { "1", "-1" } },
 };
 
 
-/* The first table row of a MOS level, or NULL. *type is the device of the
-   first row of that level whose module is loaded, or -1 */
-static const struct osdi_mos_model *
-find_osdi_mos_model(int level, int *type)
+/* The index of type_name in the model types of row, or -1 */
+static int
+model_type_index(const struct osdi_level_model *row, const char *type_name)
 {
-    const struct osdi_mos_model *first_row = NULL;
-    *type = -1;
-    for (size_t i = 0; i < NUMELEMS(osdi_mos_models) && *type < 0; i++)
-        if (osdi_mos_models[i].level == level) {
-            if (!first_row)
-                first_row = &osdi_mos_models[i];
-            *type = INPtypelook(osdi_mos_models[i].module_name);
-        }
-    return first_row;
+    for (int i = 0; i < 2; i++)
+        if (row->model_types[i] && strcmp(row->model_types[i], type_name) == 0)
+            return i;
+    return -1;
 }
 
 
-/* The value of parameter "type" that the word nmos or pmos on a card of
-   OSDI device module_name stands for, or NULL for any other card */
-char *
-INPosdiMosTypeValue(const char *module_name, const char *type_name)
+/* Set *type to the first loaded Verilog-A module of a type_name card at this
+   level.  Return an error if no module has this level (levels_message) or if
+   none of them is loaded */
+static char *
+find_osdi_level_model(const char *type_name, int level, int *type, char *levels_message)
 {
-    for (size_t i = 0; i < NUMELEMS(osdi_mos_models); i++)
-        if (strcasecmp(osdi_mos_models[i].module_name, module_name) == 0) {
-            if (strcmp(type_name, "nmos") == 0)
-                return osdi_mos_models[i].nmos_type;
-            if (strcmp(type_name, "pmos") == 0)
-                return osdi_mos_models[i].pmos_type;
+    const struct osdi_level_model *first_row = NULL;
+    *type = -1;
+    for (size_t i = 0; i < NUMELEMS(osdi_level_models) && *type < 0; i++)
+        if (osdi_level_models[i].level == level &&
+            model_type_index(&osdi_level_models[i], type_name) >= 0) {
+            if (!first_row)
+                first_row = &osdi_level_models[i];
+            *type = INPtypelook(osdi_level_models[i].module_name);
         }
+    if (!first_row)
+        return INPmkTemp(levels_message);
+    if (*type < 0)
+        return tprintf("%s level %d needs Verilog-A module %s loaded with pre_osdi\n",
+                       type_name, level, first_row->module_name);
     return NULL;
+}
+
+
+/* Whether type_name, such as nmos, selects OSDI device module_name through
+   a level.  *parameter and *value are the polarity parameter and the value
+   that type_name stands for, or NULL */
+bool
+INPosdiLevelCard(const char *module_name, const char *type_name, char **parameter, char **value)
+{
+    for (size_t i = 0; i < NUMELEMS(osdi_level_models); i++) {
+        const struct osdi_level_model *row = &osdi_level_models[i];
+        const int index = model_type_index(row, type_name);
+        if (strcasecmp(row->module_name, module_name) == 0 && index >= 0) {
+            *parameter = row->polarity_parameter;
+            *value = row->polarity_values[index];
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 /*--------------------------------------------------------------
@@ -109,8 +145,8 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 				}
 				break;
 				default: /* placeholder; use level 4 for the next model */
-				err = INPmkTemp(
-				  "Only BJT levels 1-2, 4, 9 are supported in this binary\n");
+				err = find_osdi_level_model(type_name, lev, &type,
+				  "Only BJT levels 1-2, 4, 6, 8, 9, 13 are supported in this binary\n");
 				break;
 
 			}
@@ -119,11 +155,16 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 
     /*  --------  Check if model is a diode --------- */
     else if (strcmp(type_name, "d") == 0) {
-			type = INPtypelook("Diode");
-			if (type < 0) {
-			    err =
-				INPmkTemp
-				("Device type Diode not available in this binary\n");
+			txfree(INPfindLev(line, &lev));	/* model Diode checks its own level */
+			if (lev == 7) {
+			    err = find_osdi_level_model(type_name, lev, &type, "");
+			} else {
+			    type = INPtypelook("Diode");
+			    if (type < 0) {
+				err =
+				    INPmkTemp
+				    ("Device type Diode not available in this binary\n");
+			    }
 			}
 			INPmakeMod(modname, type, image);
     } /*   else if (strcmp(typename, "d") == 0) {  */
@@ -419,16 +460,9 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 			    }
 			    break;
 			default:		/* placeholder; use level xxx for the next model */
-			{
-			    const struct osdi_mos_model *osdi_model = find_osdi_mos_model(lev, &type);
-			    if (!osdi_model)
-				err = INPmkTemp
-				    ("Only MOS device levels 1-6,8-10,14,49,54-58,60,68,72,73 are supported in this binary\n");
-			    else if (type < 0)
-				err = tprintf("MOS level %d needs Verilog-A module %s loaded with pre_osdi\n",
-					      lev, osdi_model->module_name);
+			    err = find_osdi_level_model(type_name, lev, &type,
+				"Only MOS device levels 1-6,8-10,14,49,54-58,60,68-70,72,73,76-80 are supported in this binary\n");
 			    break;
-			}
 			}
 			INPmakeMod(modname, type, image);
     }
@@ -448,6 +482,9 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
     else if (strcmp(type_name, "r") == 0) {
 			err = INPfindLev(line,&lev);
 			switch(lev) {
+				case 2:
+					err = find_osdi_level_model(type_name, lev, &type, "");
+				break;
 				case 0:
 				case 1:
 				default:

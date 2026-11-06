@@ -62,7 +62,14 @@ void INP2D(CKTcircuit *ckt, INPtables * tab, struct card *current)
         INPtermInsert(ckt, &token, tab, &node[i]);
     }
 
-    if (i > max_i) {
+    int model_numnodes = max_i;
+#ifdef OSDI
+    const bool is_osdi = ft_sim->devices[thismodel->INPmodType]->registry_entry != NULL;
+    if (is_osdi)
+        model_numnodes = *ft_sim->devices[thismodel->INPmodType]->terms;
+#endif
+
+    if (i > model_numnodes) {
         LITERR("Too many nodes for this model type");
         return;
     }
@@ -71,6 +78,9 @@ void INP2D(CKTcircuit *ckt, INPtables * tab, struct card *current)
 
     if (thismodel != NULL) {
         if ((mytype != thismodel->INPmodType)
+#ifdef OSDI
+            && !is_osdi
+#endif
 #ifdef CIDER
             && (thismodel->INPmodType != INPtypelook("NUMD"))
             && (thismodel->INPmodType != INPtypelook("NUMD2"))
@@ -92,7 +102,7 @@ void INP2D(CKTcircuit *ckt, INPtables * tab, struct card *current)
     }
 
     IFC(newInstance, (ckt, mdfast, &fast, name));
-    for (i = 0; i < max_i; i++)
+    for (i = 0; i < model_numnodes; i++)
         if (i < numnodes)
             IFC (bindNode, (ckt, fast, i + 1, node[i]));
         else if (thismodel->INPmodType != INPtypelook("NUMD")

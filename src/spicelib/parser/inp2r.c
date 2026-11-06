@@ -169,7 +169,11 @@ void INP2R(CKTcircuit *ckt, INPtables * tab, struct card *current)
           INPinsert(&model, tab);
           current->error = INPgetMod(ckt, model, &thismodel, tab);
           if (thismodel != NULL) {
-            if (INPtypelook("Resistor") != thismodel->INPmodType)
+            if (INPtypelook("Resistor") != thismodel->INPmodType
+#ifdef OSDI
+                && !ft_sim->devices[thismodel->INPmodType]->registry_entry
+#endif
+               )
             {
                 LITERR("incorrect model type for resistor");
                 return;
@@ -212,9 +216,15 @@ void INP2R(CKTcircuit *ckt, INPtables * tab, struct card *current)
         return;
     }
 
+    char *resistance = "resistance";
+#ifdef OSDI
+    if (ft_sim->devices[type]->registry_entry)
+        resistance = "r";	/* r2_cmc */
+#endif
+
     if (error1 == 0) {		/* got a resistance above */
       ptemp.rValue = val;
-      GCA(INPpName, ("resistance", &ptemp, ckt, type, fast));
+      GCA(INPpName, (resistance, &ptemp, ckt, type, fast));
     }
 
     IFC(bindNode, (ckt, fast, 1, node1));
@@ -222,7 +232,7 @@ void INP2R(CKTcircuit *ckt, INPtables * tab, struct card *current)
     PARSECALL((&line, ckt, type, fast, &leadval, &waslead, tab));
     if (waslead) {
       ptemp.rValue = leadval;
-      GCA(INPpName, ("resistance", &ptemp, ckt, type, fast));
+      GCA(INPpName, (resistance, &ptemp, ckt, type, fast));
     }
 
     return;
