@@ -1670,7 +1670,6 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
                 if (newcompat.ps && !newcompat.a)
                     newcard = pspice_compat(newcard);
 
-                int line_number_inc = 1;
                 end->nextcard = newcard;
                 /* Renumber the lines */
                 for (end = newcard; end && end->nextcard;
@@ -1678,8 +1677,6 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
                     end->linenum = line_number++;
                 }
                 end->linenum = line_number++; /* SJB - renumber last line */
-                end->linenum_orig = line_number_inc++;
-                /* renumber the last line */
             }
 
             /* Fix the buffer up a bit. */
