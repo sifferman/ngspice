@@ -1,0 +1,8 @@
+* include-last-line.cir: warnings name the last line of an included file
+.include include-last-line.lib
+v_source source 0 1
+.control
+op
+print v(source)
+.endc
+.end
