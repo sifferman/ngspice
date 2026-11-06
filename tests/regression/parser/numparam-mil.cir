@@ -1,0 +1,7 @@
+* numparam-mil.cir: mil is 25.4e-6 in braces
+v_braced braced 0 {2mil}
+.control
+op
+print v(braced)
+.endc
+.end
