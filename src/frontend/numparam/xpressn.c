@@ -615,7 +615,10 @@ parseunit(const char *s)
     case 'T':  return 1e12;
     case 'G':  return 1e9;
     case 'K':  return 1e3;
-    case 'M':  return ciprefix("MEG", s) ? 1e6 : 1e-3;
+    case 'M':
+        if (ciprefix("MEG", s))
+            return 1e6;
+        return ciprefix("MIL", s) ? 25.4e-6 : 1e-3;
     case 'U':  return 1e-6;
     case 'N':  return 1e-9;
     case 'P':  return 1e-12;
