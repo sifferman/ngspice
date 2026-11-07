@@ -35,6 +35,10 @@ void INP2W(CKTcircuit *ckt, INPtables *tab, struct card *current);
 void INP2Y(CKTcircuit *ckt, INPtables *tab, struct card *current);
 void INP2Z(CKTcircuit *ckt, INPtables *tab, struct card *current);
 
+/* inpdomod.c */
+
+bool INPfindOsdiBinding(const char *module_name, const char *type_name, char *line, char **polarity_parameter, char **polarity_value, char **err);
+
 
 /* ptfuncs.c */
 

@@ -299,6 +299,10 @@ struct comm spcp_coms[] = {
       { 040000, 040000, 040000, 040000 }, E_BEGINNING, 1, LOTS,
       NULL,
       "library library ... : Loads a osdi library." } ,
+    { "osdi_bind", com_osdi_bind, FALSE, TRUE,
+      { 040000, 040000, 040000, 040000 }, E_BEGINNING, 3, 7,
+      NULL,
+      "model_type level module [parameter value] [version version] : Selects an osdi module by model level." } ,
 #endif
     { "snp", com_pre_snp, FALSE, TRUE,          /* Enhancement-200 (use as `pre_snp`) */
       { 040000, 040000, 040000, 040000 }, E_BEGINNING, 1, LOTS,

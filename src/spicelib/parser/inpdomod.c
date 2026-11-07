@@ -8,6 +8,119 @@ Author: 1985 Thomas L. Quarles
 #include "ngspice/inpdefs.h"
 #include "inpxx.h"
 
+static struct osdi_binding {
+    char *type_name;
+    int level;
+    char *module_name;
+    char *polarity_parameter;
+    char *polarity_value;
+    char *version;
+} *osdi_bindings;
+static int osdi_binding_count;
+
+
+void
+INPosdiBind(const char *type_name, int level, const char *module_name,
+            const char *polarity_parameter, const char *polarity_value, const char *version)
+{
+    osdi_bindings = TREALLOC(struct osdi_binding, osdi_bindings, osdi_binding_count + 1);
+    osdi_bindings[osdi_binding_count++] = (struct osdi_binding) {
+        copy(type_name), level, copy(module_name), copy(polarity_parameter), copy(polarity_value), copy(version)
+    };
+}
+
+
+/* Prefer the last loaded binding matching the card version, then the last
+   loaded binding */
+static const struct osdi_binding *
+find_osdi_binding(const char *type_name, int level, char *line, char **err)
+{
+    char card_version[100] = "";
+    if (strstr(line, "version"))
+        INPfindVer(line, card_version);
+
+    const struct osdi_binding *loaded_match = NULL, *unloaded_match = NULL;
+    const struct osdi_binding *fallback_loaded = NULL, *fallback = NULL;
+    bool several_loaded = FALSE;
+    for (int i = osdi_binding_count - 1; i >= 0; i--) {
+        const struct osdi_binding *binding = &osdi_bindings[i];
+        if (binding->level != level || !cieq(binding->type_name, type_name))
+            continue;
+        const bool is_loaded = INPtypelook(binding->module_name) >= 0;
+        const bool matches_card = *card_version && binding->version && prefix(binding->version, card_version);
+        if (matches_card && is_loaded && !loaded_match)
+            loaded_match = binding;
+        if (matches_card && !is_loaded && !unloaded_match)
+            unloaded_match = binding;
+        if (is_loaded && fallback_loaded && strcasecmp(binding->module_name, fallback_loaded->module_name) != 0)
+            several_loaded = TRUE;
+        if (is_loaded && !fallback_loaded)
+            fallback_loaded = binding;
+        if (!fallback)
+            fallback = binding;
+    }
+
+    if (loaded_match)
+        return loaded_match;
+    if (!fallback_loaded)
+        return unloaded_match ? unloaded_match : fallback;
+    const char *fallback_name = fallback_loaded->module_name;
+    if (err && unloaded_match)
+        *err = INPerrCat(*err, tprintf("%s level %d: module %s for version %s not loaded, falling back to %s",
+                                       type_name, level, unloaded_match->module_name, card_version, fallback_name));
+    else if (err && *card_version && (fallback_loaded->version || several_loaded))
+        *err = INPerrCat(*err, tprintf("%s level %d: version %s not found, falling back to %s",
+                                       type_name, level, card_version, fallback_name));
+    else if (err && !*card_version && several_loaded)
+        *err = INPerrCat(*err, tprintf("%s level %d: version not given, defaulting to %s",
+                                       type_name, level, fallback_name));
+    return fallback_loaded;
+}
+
+
+static int
+find_loaded_osdi_type(const char *type_name, int level, char *line)
+{
+    const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, NULL);
+    return binding ? INPtypelook(binding->module_name) : -1;
+}
+
+
+/* Return an error message, or NULL */
+static char *
+find_osdi_type(const char *type_name, int level, char *line, int *type, char *unsupported_level_message)
+{
+    const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, NULL);
+    if (!binding)
+        return INPmkTemp(unsupported_level_message);
+    *type = INPtypelook(binding->module_name);
+    if (*type < 0)
+        return tprintf("%s level %d needs Verilog-A module %s loaded with pre_osdi\n",
+                       type_name, level, binding->module_name);
+    return NULL;
+}
+
+
+bool
+INPfindOsdiBinding(const char *module_name, const char *type_name, char *line,
+                   char **polarity_parameter, char **polarity_value, char **err)
+{
+    bool binds_type_name = FALSE;
+    for (int i = 0; i < osdi_binding_count && !binds_type_name; i++)
+        binds_type_name = cieq(osdi_bindings[i].type_name, type_name);
+    if (!binds_type_name)
+        return FALSE;
+
+    int level;
+    txfree(INPfindLev(line, &level));
+    const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, err);
+    if (!binding || strcasecmp(binding->module_name, module_name) != 0)
+        return FALSE;
+    *polarity_parameter = binding->polarity_parameter;
+    *polarity_value = binding->polarity_value;
+    return TRUE;
+}
+
 /*--------------------------------------------------------------
  * This fcn takes the model card & examines it.  Depending upon
  * model type, it parses the model line, and then calls
@@ -64,8 +177,8 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 				}
 				break;
 				default: /* placeholder; use level 4 for the next model */
-				err = INPmkTemp(
-				  "Only BJT levels 1-2, 4, 9 are supported in this binary\n");
+				err = find_osdi_type(type_name, lev, line, &type,
+				  "Only BJT levels 1-2, 4, 9 and levels bound with osdi_bind are supported in this binary\n");
 				break;
 
 			}
@@ -74,7 +187,10 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 
     /*  --------  Check if model is a diode --------- */
     else if (strcmp(type_name, "d") == 0) {
-			type = INPtypelook("Diode");
+			txfree(INPfindLev(line, &lev));	/* model Diode checks its own level */
+			type = find_loaded_osdi_type(type_name, lev, line);
+			if (type < 0)
+			    type = INPtypelook("Diode");
 			if (type < 0) {
 			    err =
 				INPmkTemp
@@ -374,8 +490,8 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 			    }
 			    break;
 			default:		/* placeholder; use level xxx for the next model */
-			    err = INPmkTemp
-				("Only MOS device levels 1-6,8-10,14,49,54-58,60,68,73 are supported in this binary\n");
+			    err = find_osdi_type(type_name, lev, line, &type,
+				"Only MOS device levels 1-6,8-10,14,49,54-58,60,68,73 and levels bound with osdi_bind are supported in this binary\n");
 			    break;
 			}
 			INPmakeMod(modname, type, image);
@@ -399,7 +515,9 @@ char *INPdomodel(CKTcircuit *ckt, struct card *image, INPtables * tab)
 				case 0:
 				case 1:
 				default:
-					type = INPtypelook("Resistor");
+					type = find_loaded_osdi_type(type_name, lev, line);
+					if (type < 0)
+						type = INPtypelook("Resistor");
 					if (type < 0) {
 						err =
 						INPmkTemp

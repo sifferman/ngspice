@@ -17,6 +17,10 @@ model_max_numnodes(int type)
 {
     if (type == INPtypelook("VBIC"))
         return 5;
+#ifdef OSDI
+    if (ft_sim->devices[type]->registry_entry)
+        return *ft_sim->devices[type]->terms;
+#endif
     return 4;
 }
 
@@ -77,7 +81,13 @@ void INP2Q(CKTcircuit *ckt, INPtables * tab, struct card *current, CKTnode *gnod
     }
 
     /* tie missing ports to ground, (substrate and thermal node) */
-    while (i < model_numnodes)
+    int grounded_numnodes = model_numnodes;
+#ifdef OSDI
+    /* an OSDI device keeps an unconnected thermal node internal, as on N */
+    if (ft_sim->devices[thismodel->INPmodType]->registry_entry)
+        grounded_numnodes = MIN(model_numnodes, 4);
+#endif
+    while (i < grounded_numnodes)
         node[i++] = gnode;
 
     numnodes = i;
@@ -90,6 +100,9 @@ void INP2Q(CKTcircuit *ckt, INPtables * tab, struct card *current, CKTnode *gnod
 #ifdef CIDER
         thismodel->INPmodType != INPtypelook("NBJT") &&
         thismodel->INPmodType != INPtypelook("NBJT2") &&
+#endif
+#ifdef OSDI
+        !ft_sim->devices[thismodel->INPmodType]->registry_entry &&
 #endif
         thismodel->INPmodType != INPtypelook("VBIC"))
     {
@@ -105,8 +118,11 @@ void INP2Q(CKTcircuit *ckt, INPtables * tab, struct card *current, CKTnode *gnod
 #endif
 
     IFC(newInstance, (ckt, mdfast, &fast, name));
-    for (i = 0; i < numnodes; i++)
-        IFC(bindNode, (ckt, fast, i + 1, node[i]));
+    for (i = 0; i < model_numnodes; i++)
+        if (i < numnodes)
+            IFC(bindNode, (ckt, fast, i + 1, node[i]));
+        else
+            GENnode(fast)[i] = -1;
 
     PARSECALL((&line, ckt, type, fast, &leadval, &waslead, tab));
 

@@ -115,11 +115,26 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
     INPgetNetTok(&line, &parm, 1);        /* throw away 'modname' */
     tfree(parm);
 
+    bool is_bound_card = false;
 #ifdef OSDI
     /* osdi models don't accept their device type as an argument */
     bool is_osdi = false;
+    const char *mos_type_name = NULL;
     if (device->registry_entry){ 
-        INPgetNetTok(&line, &parm, 1); /* throw away osdi */
+        INPgetNetTok(&line, &parm, 1); /* osdi model name, or the model type of a bound card */
+        char *polarity_parameter_name = NULL, *polarity_value = NULL;
+        is_bound_card = INPfindOsdiBinding(device->name, parm, line, &polarity_parameter_name, &polarity_value, &err);
+        if (is_bound_card && (strcmp(parm, "nmos") == 0 || strcmp(parm, "pmos") == 0))
+            mos_type_name = strcmp(parm, "nmos") == 0 ? "nmos" : "pmos";
+        if (polarity_parameter_name) {
+            IFparm *polarity_parameter = find_model_parameter(polarity_parameter_name, device);
+            char *polarity_text = polarity_value;
+            IFvalue *polarity = polarity_parameter ? INPgetValue(ckt, &polarity_text, polarity_parameter->dataType, tab) : NULL;
+            if (polarity)
+                ft_sim->setModelParm(ckt, modtmp->INPmodfast, polarity_parameter->id, polarity, NULL);
+            else
+                err = INPerrCat(err, tprintf("%s cannot set %s=%s, %s ignored", device->name, polarity_parameter_name, polarity_value, parm));
+        }
         tfree(parm);
         is_osdi = true;
     }
@@ -128,6 +143,28 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
     while (*line) {
         INPgetTok(&line, &parm, 1);
         if (!*parm) {
+            FREE(parm);
+            continue;
+        }
+
+#ifdef OSDI
+        /* BSIM-CMG devtype is 1 for nmos and 0 for pmos; nmos or pmos decides */
+        if (mos_type_name && strcmp(parm, "devtype") == 0) {
+            const double devtype = INPgetValue(ckt, &line, IF_REAL, tab)->rValue;
+            const double devtype_of_mos_type = strcmp(mos_type_name, "nmos") == 0 ? 1 : 0;
+            if (devtype != devtype_of_mos_type)
+                err = INPerrCat(err, tprintf("devtype=%g contradicts %s - ignored", devtype, mos_type_name));
+            FREE(parm);
+            continue;
+        }
+#endif
+
+        /* the level and version of a bound card selected the module, so the
+           level and version parameters of the module keep their defaults */
+        if (is_bound_card && (strcmp(parm, "level") == 0 || strcmp(parm, "version") == 0)) {
+            char *selector_value;
+            INPgetTok(&line, &selector_value, 1);
+            FREE(selector_value);
             FREE(parm);
             continue;
         }

@@ -139,6 +139,7 @@ int INPretrieve(char **, INPtables *);
 int INPremove(char *, INPtables *);
 INPmodel *INPlookMod(const char *);
 int INPmakeMod(char *, int, struct card *);
+void INPosdiBind(const char *, int, const char *, const char *, const char *, const char *);
 char *INPmkTemp(char *);
 void INPpas1(CKTcircuit *, struct card *, INPtables *);
 void INPpas2(CKTcircuit *, struct card *, INPtables *, TSKtask *);

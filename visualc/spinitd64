@@ -14,6 +14,41 @@ set filetype=ascii
 set num_threads=8
 *set interactive
 
+if $?osdi_enabled
+ osdi_bind npn 6 bjt504tva type 1 version 504
+ osdi_bind pnp 6 bjt504tva type -1 version 504
+ osdi_bind npn 6 bjt504va type 1 version 504
+ osdi_bind pnp 6 bjt504va type -1 version 504
+ osdi_bind npn 6 bjt505_va type 1 version 505
+ osdi_bind pnp 6 bjt505_va type -1 version 505
+ osdi_bind npn 8 hicumL2va type 1
+ osdi_bind pnp 8 hicumL2va type -1
+ osdi_bind npn 13 hicumL0va type 1
+ osdi_bind pnp 13 hicumL0va type -1
+ osdi_bind d 7 diode_cmc
+ osdi_bind r 2 r2_cmc
+ osdi_bind nmos 69 PSP103VA type 1 version 103
+ osdi_bind pmos 69 PSP103VA type -1 version 103
+ osdi_bind nmos 69 PSP104VA type 1 version 104
+ osdi_bind pmos 69 PSP104VA type -1 version 104
+ osdi_bind nmos 70 bsimsoi_va type 1
+ osdi_bind pmos 70 bsimsoi_va type -1
+ osdi_bind nmos 72 bsimcmg type 1 version 110
+ osdi_bind pmos 72 bsimcmg type 0 version 110
+ osdi_bind nmos 72 bsimcmg_va type 1 version 111
+ osdi_bind pmos 72 bsimcmg_va type -1 version 111
+ osdi_bind nmos 76 l_utsoi type 1
+ osdi_bind pmos 76 l_utsoi type -1
+ osdi_bind nmos 77 bsimbulk type 1
+ osdi_bind pmos 77 bsimbulk type -1
+ osdi_bind nmos 78 bsimimg type 1
+ osdi_bind pmos 78 bsimimg type -1
+ osdi_bind nmos 79 ekv3_rf sign 1
+ osdi_bind pmos 79 ekv3_rf sign -1
+ osdi_bind nmos 80 hisimsoi_va type 1
+ osdi_bind pmos 80 hisimsoi_va type -1
+end
+
 * comment out if central osdi management is set up
 unset osdi_enabled
 

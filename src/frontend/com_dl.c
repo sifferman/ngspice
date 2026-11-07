@@ -2,6 +2,7 @@
 #include "ngspice/ftedefs.h"
 #include "ngspice/devdefs.h" /* solve deps in dev.h*/
 #include "../spicelib/devices/dev.h" /* for load library commands */
+#include "ngspice/inpdefs.h"
 #include "com_dl.h"
 
 
@@ -39,6 +40,28 @@ void com_osdi(wordlist *wl)
             if (ft_stricterror)
                 controlled_exit(EXIT_BAD);
          }
+}
+
+void com_osdi_bind(wordlist *wl)
+{
+    char *words[7];
+    int word_count = 0;
+    for (; wl; wl = wl->wl_next)
+        words[word_count++] = wl->wl_word;
+    const bool has_version = word_count >= 5 && cieq(words[word_count - 2], "version");
+    const int word_count_without_version = word_count - (has_version ? 2 : 0);
+    const bool has_polarity = word_count_without_version == 5;
+    int level;
+    if ((word_count_without_version != 3 && !has_polarity) || sscanf(words[1], "%d", &level) != 1) {
+        fprintf(cp_err, "Error: osdi_bind needs model_type level module [parameter value] [version version]\n");
+        return;
+    }
+    const char *type_name = words[0];
+    const char *module_name = words[2];
+    const char *polarity_parameter = has_polarity ? words[3] : NULL;
+    const char *polarity_value = has_polarity ? words[4] : NULL;
+    const char *version = has_version ? words[word_count - 1] : NULL;
+    INPosdiBind(type_name, level, module_name, polarity_parameter, polarity_value, version);
 }
 #endif
 

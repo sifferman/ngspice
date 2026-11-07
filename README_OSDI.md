@@ -18,6 +18,18 @@ Example usage: `pre_osdi diode.osdi`
 If a relative path is provided to the `osdi` command in a netlist, it will resolve that path **relative to the netlist**, not relative to current working directory.
 This ensures that netlists can be simulated from any directory
 
+## Selecting modules by model level
+
+The `osdi_bind` command lets a `.model` card select an OSDI module by its `level`.
+Example usage: `osdi_bind pmos 72 bsimcmg_va type -1 version 111`
+
+This makes `pmos` cards at level 72 use the module `bsimcmg_va` with `type=-1`.
+The parameter and value, and the version, are optional.
+When several modules are bound to one level, a card selects the one whose version starts the card's `version`, or else the last bound module that is loaded.
+
+`spinit` holds the default bindings, which `.spiceinit` or `pre_osdi_bind` can override.
+The module must still be loaded with `osdi` or `pre_osdi`.
+
 ## Build Instructions
 
 To compile NGSPICE with OSDI support ensure that the `--enable-predictor` and `--enable-osdi` flags are used.
