@@ -298,7 +298,7 @@ struct comm spcp_coms[] = {
     { "osdi", com_osdi, FALSE, TRUE,
       { 040000, 040000, 040000, 040000 }, E_BEGINNING, 1, LOTS,
       NULL,
-      "library library ... : Loads a osdi library." } ,
+      "library [version version] ... : Loads a osdi library." } ,
     { "osdi_bind", com_osdi_bind, FALSE, TRUE,
       { 040000, 040000, 040000, 040000 }, E_BEGINNING, 3, 7,
       NULL,

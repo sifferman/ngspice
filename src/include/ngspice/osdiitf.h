@@ -29,6 +29,8 @@ typedef struct OsdiRegistryEntry {
 #endif
   
   int experimental;
+
+  char *version; /* from osdi file version v, or NULL */
 } OsdiRegistryEntry;
 
 typedef struct OsdiObjectFile {
@@ -38,5 +40,6 @@ typedef struct OsdiObjectFile {
 
 extern OsdiObjectFile load_object_file(const char *path);
 extern SPICEdev *osdi_create_spicedev(const OsdiRegistryEntry *entry);
+extern const char *osdi_module_name(const OsdiRegistryEntry *entry);
 
 extern char *inputdir;

@@ -599,13 +599,44 @@ static int osdi_add_device(int n, OsdiRegistryEntry *devs) {
   return 0;
 }
 
-int load_osdi(const char *path) {
+/* Whether a device named name is loaded with the same version, or both
+   without version */
+static bool is_device_loaded(const char *name, const char *version) {
+  for (int i = 0; i < DEVNUM; i++) {
+    if (!DEVices[i] || strcasecmp(DEVices[i]->DEVpublic.name, name) != 0)
+      continue;
+    const OsdiRegistryEntry *entry = DEVices[i]->DEVpublic.registry_entry;
+    const char *loaded_version = entry ? entry->version : NULL;
+    const bool same_version = loaded_version && version
+        ? strcmp(loaded_version, version) == 0
+        : loaded_version == version;
+    if (same_version)
+      return true;
+  }
+  return false;
+}
+
+/* Load the OSDI modules in the file path, and give them version, if not
+   NULL, so osdi_bind can select among modules of the same name */
+int load_osdi(const char *path, const char *version) {
   OsdiObjectFile file = load_object_file(path);
   if (file.num_entries < 0) {
     return file.num_entries;
   }
 
-  osdi_add_device(file.num_entries, file.entrys);
+  int new_module_count = 0;
+  for (int i = 0; i < file.num_entries; i++) {
+    const char *name = osdi_module_name(&file.entrys[i]);
+    if (is_device_loaded(name, version)) {
+      fprintf(stderr, "Warning: OSDI module %s%s%s in %s is already loaded, ignored\n",
+              name, version ? " version " : "", version ? version : "", path);
+    } else {
+      file.entrys[i].version = copy(version);
+      file.entrys[new_module_count++] = file.entrys[i];
+    }
+  }
+
+  osdi_add_device(new_module_count, file.entrys);
   return 0;
 }
 #endif

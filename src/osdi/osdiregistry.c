@@ -374,6 +374,7 @@ extern OsdiObjectFile load_object_file(const char *input) {
    * nghash_insert returns NULL if the key (handle) was not already in the table
    * and the data (DUMMYDATA) that was previously inserted (!= NULL) otherwise*/
   if (nghash_insert(known_object_files, handle, DUMMYDATA)) {
+    fprintf(stderr, "Warning: OSDI file %s is already loaded, ignored\n", path);
     txfree(path);
     return EMPTY_OBJECT;
   }
@@ -514,6 +515,11 @@ extern OsdiObjectFile load_object_file(const char *input) {
       .entrys = dst,
       .num_entries = (int)OSDI_NUM_DESCRIPTORS,
   };
+}
+
+/* The name of the module of entry, such as bsimcmg_va */
+const char *osdi_module_name(const OsdiRegistryEntry *entry) {
+  return ((const OsdiDescriptor *)entry->descriptor)->name;
 }
 
 #ifdef KLU

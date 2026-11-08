@@ -31,15 +31,22 @@ if (wl && wl->wl_word)
 #ifdef OSDI
 void com_osdi(wordlist *wl)
 {
-    wordlist *ww;
-    for (ww = wl; ww; ww = ww->wl_next)
-        if (load_osdi(ww->wl_word)) {
-            fprintf(cp_err, "Error: Library %s couldn't be loaded!\n", ww->wl_word);
+    for (wordlist *word = wl; word; word = word->wl_next) {
+        const char *path = word->wl_word;
+        const char *version = NULL;
+        const wordlist *next = word->wl_next;
+        if (next && next->wl_next && cieq(next->wl_word, "version")) {
+            word = next->wl_next;
+            version = word->wl_word;
+        }
+        if (load_osdi(path, version)) {
+            fprintf(cp_err, "Error: Library %s couldn't be loaded!\n", path);
             ft_spiniterror = TRUE;
             ft_osdierror = TRUE;
             if (ft_stricterror)
                 controlled_exit(EXIT_BAD);
          }
+    }
 }
 
 void com_osdi_bind(wordlist *wl)

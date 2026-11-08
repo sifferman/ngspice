@@ -6,6 +6,11 @@ Author: 1985 Thomas L. Quarles
 #include "ngspice/ngspice.h"
 #include "ngspice/iferrmsg.h"
 #include "ngspice/inpdefs.h"
+#include "ngspice/ifsim.h"
+#include "ngspice/fteext.h"
+#ifdef OSDI
+#include "ngspice/osdiitf.h"
+#endif
 #include "inpxx.h"
 
 static struct osdi_binding {
@@ -30,6 +35,29 @@ INPosdiBind(const char *type_name, int level, const char *module_name,
 }
 
 
+/* Prefer a module loaded with a matching version over one loaded without */
+static int
+find_module_type(const struct osdi_binding *binding)
+{
+    int unversioned_type = -1;
+#ifdef OSDI
+    for (int i = 0; i < ft_sim->numDevices; i++) {
+        const IFdevice *device = ft_sim->devices[i];
+        if (!device || !device->registry_entry || strcasecmp(device->name, binding->module_name) != 0)
+            continue;
+        const char *loaded_version = ((const OsdiRegistryEntry *) device->registry_entry)->version;
+        if (!binding->version || (loaded_version && prefix(binding->version, loaded_version)))
+            return i;
+        if (!loaded_version && unversioned_type < 0)
+            unversioned_type = i;
+    }
+#else
+    NG_IGNORE(binding);
+#endif
+    return unversioned_type;
+}
+
+
 /* Prefer the last loaded binding matching the card version, then the last
    loaded binding */
 static const struct osdi_binding *
@@ -46,13 +74,14 @@ find_osdi_binding(const char *type_name, int level, char *line, char **err)
         const struct osdi_binding *binding = &osdi_bindings[i];
         if (binding->level != level || !cieq(binding->type_name, type_name))
             continue;
-        const bool is_loaded = INPtypelook(binding->module_name) >= 0;
+        const int module_type = find_module_type(binding);
+        const bool is_loaded = module_type >= 0;
         const bool matches_card = *card_version && binding->version && prefix(binding->version, card_version);
         if (matches_card && is_loaded && !loaded_match)
             loaded_match = binding;
         if (matches_card && !is_loaded && !unloaded_match)
             unloaded_match = binding;
-        if (is_loaded && fallback_loaded && strcasecmp(binding->module_name, fallback_loaded->module_name) != 0)
+        if (is_loaded && fallback_loaded && module_type != find_module_type(fallback_loaded))
             several_loaded = TRUE;
         if (is_loaded && !fallback_loaded)
             fallback_loaded = binding;
@@ -65,15 +94,19 @@ find_osdi_binding(const char *type_name, int level, char *line, char **err)
     if (!fallback_loaded)
         return unloaded_match ? unloaded_match : fallback;
     const char *fallback_name = fallback_loaded->module_name;
+    const char *version_label = fallback_loaded->version ? " version " : "";
+    const char *fallback_version = fallback_loaded->version ? fallback_loaded->version : "";
     if (err && unloaded_match)
-        *err = INPerrCat(*err, tprintf("%s level %d: module %s for version %s not loaded, falling back to %s",
-                                       type_name, level, unloaded_match->module_name, card_version, fallback_name));
+        *err = INPerrCat(*err, tprintf("%s level %d: module %s for version %s not loaded, falling back to %s%s%s",
+                                       type_name, level, unloaded_match->module_name, card_version,
+                                       fallback_name, version_label, fallback_version));
     else if (err && *card_version && (fallback_loaded->version || several_loaded))
-        *err = INPerrCat(*err, tprintf("%s level %d: version %s not found, falling back to %s",
-                                       type_name, level, card_version, fallback_name));
+        *err = INPerrCat(*err, tprintf("%s level %d: version %s not found, falling back to %s%s%s",
+                                       type_name, level, card_version,
+                                       fallback_name, version_label, fallback_version));
     else if (err && !*card_version && several_loaded)
-        *err = INPerrCat(*err, tprintf("%s level %d: version not given, defaulting to %s",
-                                       type_name, level, fallback_name));
+        *err = INPerrCat(*err, tprintf("%s level %d: version not given, defaulting to %s%s%s",
+                                       type_name, level, fallback_name, version_label, fallback_version));
     return fallback_loaded;
 }
 
@@ -82,7 +115,7 @@ static int
 find_loaded_osdi_type(const char *type_name, int level, char *line)
 {
     const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, NULL);
-    return binding ? INPtypelook(binding->module_name) : -1;
+    return binding ? find_module_type(binding) : -1;
 }
 
 
@@ -93,7 +126,7 @@ find_osdi_type(const char *type_name, int level, char *line, int *type, char *un
     const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, NULL);
     if (!binding)
         return INPmkTemp(unsupported_level_message);
-    *type = INPtypelook(binding->module_name);
+    *type = find_module_type(binding);
     if (*type < 0)
         return tprintf("%s level %d needs Verilog-A module %s loaded with pre_osdi\n",
                        type_name, level, binding->module_name);
@@ -102,7 +135,7 @@ find_osdi_type(const char *type_name, int level, char *line, int *type, char *un
 
 
 bool
-INPfindOsdiBinding(const char *module_name, const char *type_name, char *line,
+INPfindOsdiBinding(int type, const char *type_name, char *line,
                    char **polarity_parameter, char **polarity_value, char **err)
 {
     bool binds_type_name = FALSE;
@@ -114,7 +147,7 @@ INPfindOsdiBinding(const char *module_name, const char *type_name, char *line,
     int level;
     txfree(INPfindLev(line, &level));
     const struct osdi_binding *binding = find_osdi_binding(type_name, level, line, err);
-    if (!binding || strcasecmp(binding->module_name, module_name) != 0)
+    if (!binding || find_module_type(binding) != type)
         return FALSE;
     *polarity_parameter = binding->polarity_parameter;
     *polarity_value = binding->polarity_value;

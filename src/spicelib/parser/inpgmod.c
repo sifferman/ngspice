@@ -123,7 +123,7 @@ create_model(CKTcircuit *ckt, INPmodel *modtmp, INPtables *tab)
     if (device->registry_entry){ 
         INPgetNetTok(&line, &parm, 1); /* osdi model name, or the model type of a bound card */
         char *polarity_parameter_name = NULL, *polarity_value = NULL;
-        is_bound_card = INPfindOsdiBinding(device->name, parm, line, &polarity_parameter_name, &polarity_value, &err);
+        is_bound_card = INPfindOsdiBinding(modtmp->INPmodType, parm, line, &polarity_parameter_name, &polarity_value, &err);
         if (is_bound_card && (strcmp(parm, "nmos") == 0 || strcmp(parm, "pmos") == 0))
             mos_type_name = strcmp(parm, "nmos") == 0 ? "nmos" : "pmos";
         if (polarity_parameter_name) {

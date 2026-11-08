@@ -29,6 +29,7 @@ When several modules are bound to one level, a card selects the one whose versio
 
 `spinit` holds the default bindings, which `.spiceinit` or `pre_osdi_bind` can override.
 The module must still be loaded with `osdi` or `pre_osdi`.
+`pre_osdi file.osdi version 112` gives the modules of a file a version, so modules with the same name load together and `osdi_bind ... version 112` selects among them.
 
 ## Build Instructions
 
