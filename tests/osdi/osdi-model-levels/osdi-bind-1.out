@@ -1,0 +1,33 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * osdi_bind: model levels bound to the osdi modules of dummy_modules.c
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+i(v_nmos_version_1) = -1.00000e-03
+i(v_nmos_version_2) = -2.00000e-02
+i(v_nmos_version_unknown) = -2.00000e-02
+i(v_nmos_version_not_loaded) = -2.00000e-02
+i(v_nmos_no_version) = -2.00000e-02
+i(v_pmos_one_module) = 1.000000e-03
+i(v_nmos_no_polarity) = -1.00000e-03
+i(v_module_card) = -1.00000e-03
+i(v_module_card_level_2) = -1.00000e-03
+i(v_module_card_on_m) = -2.00000e-03
+i(v_npn_three_nodes) = -3.00000e-03
+i(v_diode_bound) = -8.00000e-03
+i(v_diode_builtin) = -3.70559e-04
+i(v_resistor_value_first) = -1.00000e-02
+i(v_resistor_builtin) = -1.00000e-03
+
+Note: No compatibility mode selected!
+
+
+Circuit: * errors
+
+Note: Simulation executed from .control section 

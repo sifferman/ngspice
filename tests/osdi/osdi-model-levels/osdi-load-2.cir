@@ -1,0 +1,14 @@
+* pre_osdi: modules of the same name and version load once
+
+.model module_card dummy_mos
+v_module_card module_card 0 1
+n_module_card module_card 0 0 0 module_card
+
+.control
+* the modules of dummy_modules.osdi are ignored
+pre_osdi dummy_modules_tenfold.osdi version 1 dummy_modules.osdi version 1
+op
+print i(v_module_card)
+.endc
+
+.end

@@ -1,0 +1,112 @@
+* osdi_bind: model levels bound to the OSDI modules of dummy_modules.c
+*
+* Each module conducts g * type * area between two terminals, with g
+* 1 mS for dummy_mos, 2 mS for dummy_mos_alternate, 3 mS for dummy_bjt,
+* 4 mS for dummy_diode and 5 mS for resistor. The modules loaded with
+* version 2 conduct ten times more. A 1 V source drives each case, so its
+* current shows which module the card selected, and with which polarity.
+* The module resistor is named like the built-in device Resistor.
+
+* version 1.5 selects the binding with version 1, a module loaded without version
+.model nmos_version_1 nmos level=90 version=1.5
+* version 2 selects the later of two bindings, to a module loaded with version 2
+.model nmos_version_2 nmos level=90 version=2
+* falls back to the last loaded binding
+.model nmos_version_unknown nmos level=90 version=4
+.model nmos_version_not_loaded nmos level=90 version=3
+.model nmos_no_version nmos level=90 devtype=1
+* type -1 from two bindings to one module, so version 5 gives no warning;
+* devtype=1 contradicts pmos and is ignored
+.model pmos_one_module pmos level=90 version=5 devtype=1
+* the module has no parameter nosuchparameter
+.model nmos_no_polarity nmos level=91
+* module cards, not bound cards, although osdi_bind binds dummy_mos at level 1
+.model module_card dummy_mos
+.model module_card_level_2 dummy_mos level=2
+.model module_card_on_m dummy_mos_alternate
+
+.model npn_bound npn level=20
+.model diode_bound d level=20
+.model diode_builtin d rs=1k
+.model resistor_bound r level=20
+.model resistor_builtin r
+
+v_nmos_version_1 nmos_version_1 0 1
+m_nmos_version_1 nmos_version_1 0 0 0 nmos_version_1
+v_nmos_version_2 nmos_version_2 0 1
+m_nmos_version_2 nmos_version_2 0 0 0 nmos_version_2
+v_nmos_version_unknown nmos_version_unknown 0 1
+m_nmos_version_unknown nmos_version_unknown 0 0 0 nmos_version_unknown
+v_nmos_version_not_loaded nmos_version_not_loaded 0 1
+m_nmos_version_not_loaded nmos_version_not_loaded 0 0 0 nmos_version_not_loaded
+v_nmos_no_version nmos_no_version 0 1
+m_nmos_no_version nmos_no_version 0 0 0 nmos_no_version
+v_pmos_one_module pmos_one_module 0 1
+m_pmos_one_module pmos_one_module 0 0 0 pmos_one_module
+v_nmos_no_polarity nmos_no_polarity 0 1
+m_nmos_no_polarity nmos_no_polarity 0 0 0 nmos_no_polarity
+v_module_card module_card 0 1
+n_module_card module_card 0 0 0 module_card
+v_module_card_level_2 module_card_level_2 0 1
+n_module_card_level_2 module_card_level_2 0 0 0 module_card_level_2
+v_module_card_on_m module_card_on_m 0 1
+m_module_card_on_m module_card_on_m 0 0 0 module_card_on_m
+
+* three nodes: substrate grounded, thermal node internal
+v_npn_three_nodes npn_three_nodes 0 1
+q_npn_three_nodes npn_three_nodes 0 0 npn_bound
+* two of three nodes, area 2
+v_diode_bound diode_bound 0 1
+d_diode_bound diode_bound 0 diode_bound area=2
+v_diode_builtin diode_builtin 0 1
+d_diode_builtin diode_builtin 0 diode_builtin
+v_resistor_value_first resistor_value_first 0 1
+r_resistor_value_first resistor_value_first 0 100 resistor_bound
+v_resistor_builtin resistor_builtin 0 1
+r_resistor_builtin resistor_builtin 0 resistor_builtin 1k
+
+.control
+pre_osdi dummy_modules.osdi dummy_modules_tenfold.osdi version 2
+pre_osdi_bind nmos 90 dummy_missing type 1 version 3
+pre_osdi_bind nmos 90 dummy_mos type 1 version 1
+pre_osdi_bind nmos 90 dummy_mos type 1 version 2
+pre_osdi_bind nmos 90 dummy_mos_alternate type 1 version 2
+pre_osdi_bind pmos 90 dummy_mos type -1 version 1
+pre_osdi_bind pmos 90 dummy_mos type -1
+pre_osdi_bind nmos 91 dummy_mos nosuchparameter 1
+pre_osdi_bind dummy_mos 1 dummy_mos_alternate type -1
+pre_osdi_bind npn 20 dummy_bjt type 1
+pre_osdi_bind d 20 dummy_diode
+pre_osdi_bind d 1 dummy_missing
+pre_osdi_bind r 20 resistor
+pre_osdi_bind r 1 dummy_missing
+op
+print i(v_nmos_version_1) i(v_nmos_version_2) i(v_nmos_version_unknown)
+print i(v_nmos_version_not_loaded) i(v_nmos_no_version) i(v_pmos_one_module)
+print i(v_nmos_no_polarity) i(v_module_card) i(v_module_card_level_2) i(v_module_card_on_m)
+print i(v_npn_three_nodes) i(v_diode_bound) i(v_diode_builtin)
+print i(v_resistor_value_first) i(v_resistor_builtin)
+
+* errors, in a second circuit
+osdi_bind nmos ninety dummy_mos
+osdi_bind nmos 90 dummy_mos type
+osdi_bind nmos 92 dummy_absent type 1 version 7
+osdi_bind nmos 92 dummy_missing
+osdi_bind d 22 resistor
+circbyline * errors
+circbyline .model nmos_not_loaded nmos level=92 version=7
+circbyline .model nmos_unbound nmos level=93
+circbyline .model npn_unbound npn level=21
+circbyline .model two_terminals d level=22
+circbyline .model jfet njf
+circbyline v_errors errors 0 1
+circbyline d_too_many_nodes errors 0 0 two_terminals
+circbyline m_nmos_not_loaded errors 0 0 0 nmos_not_loaded
+circbyline m_nmos_unbound errors 0 0 0 nmos_unbound
+circbyline q_npn_unbound errors 0 0 npn_unbound
+circbyline d_mismatch errors 0 nmos_unbound
+circbyline n_mismatch errors 0 0 0 jfet
+circbyline .end
+.endc
+
+.end

@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-TESTS =
+TESTS = osdi-bind-1.cir osdi-load-1.cir osdi-load-2.cir
 
 TESTS_ENVIRONMENT = NGSPICE_OSDI_DIR=$(abs_top_builddir)/tests/osdi/.libs ngspice_vpath=$(srcdir) $(SHELL) $(top_srcdir)/tests/bin/check.sh $(top_builddir)/src/ngspice
 
