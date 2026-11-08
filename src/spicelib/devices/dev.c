@@ -599,17 +599,16 @@ static int osdi_add_device(int n, OsdiRegistryEntry *devs) {
   return 0;
 }
 
-/* Whether a device named name is loaded with the same version, or both
+/* Whether an OSDI module named name is loaded with the same version, or both
    without version */
 static bool is_device_loaded(const char *name, const char *version) {
   for (int i = 0; i < DEVNUM; i++) {
-    if (!DEVices[i] || strcasecmp(DEVices[i]->DEVpublic.name, name) != 0)
+    const OsdiRegistryEntry *entry = DEVices[i] ? DEVices[i]->DEVpublic.registry_entry : NULL;
+    if (!entry || strcasecmp(DEVices[i]->DEVpublic.name, name) != 0)
       continue;
-    const OsdiRegistryEntry *entry = DEVices[i]->DEVpublic.registry_entry;
-    const char *loaded_version = entry ? entry->version : NULL;
-    const bool same_version = loaded_version && version
-        ? strcmp(loaded_version, version) == 0
-        : loaded_version == version;
+    const bool same_version = entry->version && version
+        ? strcmp(entry->version, version) == 0
+        : entry->version == version;
     if (same_version)
       return true;
   }
