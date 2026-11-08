@@ -9881,7 +9881,10 @@ void inp_rem_unused_models(struct nscope *root, struct card *deck)
                 struct modellist *m =
                         inp_find_model(card->level, elem_model_name);
                 if (m) {
-                    if (*curr_line != m->elemb && !(*curr_line == 'n' && m->elemb == 'a'))
+                    const bool may_be_osdi =
+                        (m->elemb == 'a' && strchr("mdqr", *curr_line)) ||
+                        (*curr_line == 'n' && strchr("amdqr", m->elemb));
+                    if (*curr_line != m->elemb && !may_be_osdi)
                         fprintf(stderr,
                                 "warning, model type mismatch in line\n    "
                                 "%s\n",
