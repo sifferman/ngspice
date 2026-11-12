@@ -1,0 +1,23 @@
+* osdi: load modules after a circuit, and a module with the name of a loaded module stays unused
+*
+* dummy_modules_tenfold.osdi has the modules of dummy_modules.osdi with ten
+* times the conductance. dummy_mos conducts 1 mS from drain to source.
+
+v_before before 0 1
+r_before before 0 1k
+
+.control
+osdi dummy_modules.osdi
+op
+print i(v_before)
+osdi dummy_modules_tenfold.osdi
+circbyline * first_module
+circbyline .model first_module dummy_mos
+circbyline v_first_module first_module 0 1
+circbyline m_first_module first_module 0 0 0 first_module
+circbyline .end
+op
+print i(v_first_module)
+.endc
+
+.end

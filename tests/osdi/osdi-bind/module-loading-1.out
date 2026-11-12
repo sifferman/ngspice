@@ -1,0 +1,25 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * osdi: load modules after a circuit, and a module with the name of a loaded module stays unused
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+i(v_before) = -1.00000e-03
+
+Note: No compatibility mode selected!
+
+
+Circuit: * first_module
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+i(v_first_module) = -1.00000e-03
+Note: Simulation executed from .control section 

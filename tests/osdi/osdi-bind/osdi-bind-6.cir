@@ -1,0 +1,87 @@
+* osdi_bind: a card version without value, alias=, a diode area in braces, rejected cards, command syntax
+*
+* dummy_mos conducts g * area from drain to source (g = 1 mS),
+* dummy_mos_alternate 2 mS, and dummy_bjt 3 mS * area from its first to
+* its third terminal. ab is an alias of area.
+
+* level 94: version=v2 -> dummy_mos_alternate, else dummy_mos
+.model version_without_value nmos level=94 version
+.model mos_alias nmos level=91
+.model diode_five_terminals d level=24
+
+v_version_without_value version_without_value 0 1
+m_version_without_value version_without_value 0 0 0 version_without_value
+* a later parameter wins
+v_alias_and_area alias_and_area 0 1
+m_alias_and_area alias_and_area 0 0 0 mos_alias ab=2 area=3
+* an unlabeled area in braces after numeric nodes
+v_expression_area expression_area 0 1
+d_expression_area expression_area 0 0 0 diode_five_terminals {2}
+
+.control
+pre_osdi dummy_modules.osdi
+pre_osdi_bind mos 94 dummy_mos
+pre_osdi_bind mos 94 dummy_mos_alternate version=v2
+pre_osdi_bind mos 91 dummy_mos alias=ab:area
+pre_osdi_bind dio 24 dummy_bjt alias=area:area
+op
+print i(v_version_without_value) i(v_alias_and_area) i(v_expression_area)
+* Q: the unlabeled value of a module without the alias parameter
+osdi_bind bjt 92 dummy_bjt alias=area:emitter_area
+circbyline * q_no_area
+circbyline .model bjt_no_area npn level=92
+circbyline v_q_no_area q_no_area 0 1
+circbyline q_q_no_area q_no_area 0 0 bjt_no_area 2
+circbyline .end
+op
+print i(v_q_no_area)
+* aliases longer than the line; b fills the buffer of the line to its end
+osdi_bind mos 93 dummy_mos alias=a:area_with_a_name_much_longer_than_the_line_of_the_instance_that_uses_it,b:area_with_a_name_that_fills_the_line_just_to_its_end
+circbyline * long_alias
+circbyline .model mos_long_alias nmos level=93
+circbyline v_long_alias long_alias 0 1
+circbyline m_long_alias long_alias 0 0 0 mos_long_alias a=2
+circbyline m_longer_alias long_alias 0 0 0 mos_long_alias b=2
+circbyline .end
+op
+print i(v_long_alias)
+* D rejects a built-in npn card
+circbyline * d_builtin_npn_card
+circbyline .model npn_builtin npn
+circbyline v_d_builtin_npn_card d_builtin_npn_card 0 1
+circbyline d_builtin_npn_card d_builtin_npn_card 0 npn_builtin
+circbyline .end
+op
+print i(v_d_builtin_npn_card)
+* binning: a card of a built-in level, and a card of an unbound level
+circbyline * builtin_not_binnable
+circbyline .model nmos_level_1.1 nmos level=1 lmin=0 lmax=10u wmin=0 wmax=10u
+circbyline v_builtin_not_binnable builtin_not_binnable 0 1
+circbyline m_builtin_not_binnable builtin_not_binnable 0 0 0 nmos_level_1 l=1u w=1u
+circbyline .end
+op
+print i(v_builtin_not_binnable)
+circbyline * unknown_level
+circbyline .model nmos_unknown.1 nmos level=89 lmin=0 lmax=10u wmin=0 wmax=10u
+circbyline v_unknown_level unknown_level 0 1
+circbyline m_unknown_level unknown_level 0 0 0 nmos_unknown l=1u w=1u
+circbyline .end
+op
+print i(v_unknown_level)
+* command syntax: a rejected command adds no binding
+osdi_bind mos 75 dummy_mos version="110"
+osdi_bind mos 76 ""
+* alias without a name or parameter, or with a second ':'
+osdi_bind mos 76 dummy_mos alias=:ab
+osdi_bind mos 76 dummy_mos alias=area:
+osdi_bind mos 76 dummy_mos alias=area:ab:c
+* polarity without both values
+osdi_bind mos 76 dummy_mos polarity=type:1
+osdi_bind mos 76 dummy_mos polarity=type::0
+osdi_bind mos 76 dummy_mos polarity=type:1:
+* none allows only version= and has=
+osdi_bind mos 75 none polarity=type:1:0
+osdi_bind
+.endc
+
+.end
